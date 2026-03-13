@@ -6,15 +6,14 @@ import pandas as pd
 st.set_page_config(page_title="Calorie Master", page_icon="🎡", layout="centered")
 
 # --- 1. การตั้งค่า Session State ---
-if "food_list" not in st.session_state or not isinstance(st.session_state.food_list, list):
+if "food_list" not in st.session_state:
     st.session_state.food_list = []
 if "mode" not in st.session_state:
     st.session_state.mode = "start"
 if "category" not in st.session_state:
     st.session_state.category = ""
 
-# --- 2. คลังข้อมูลอาหาร (แบ่ง 4 หมวดหมู่) ---
-# ตรง "img" สามารถเปลี่ยนจาก Emoji เป็นชื่อไฟล์รูปเช่น "apple.jpg" ได้ (ถ้าอัปโหลดรูปลง GitHub ด้วย)
+# --- 2. คลังข้อมูลอาหาร (ดึงข้อมูลชุดเดิมมาใช้) ---
 data_source = {
     "ของคาว (Savory)": [
         {"name": "ข้าวขาหมู", "cal": 690, "img": "🍛"},
@@ -48,48 +47,66 @@ data_source = {
 
 st.title("🎡 เกมสุ่มหมวดวัดความจำแคลลอรี่")
 
-# --- 3. โหมดหน้าแรก: วงล้อสุ่มหมวด ---
+# --- 3. โหมดหน้าแรก (รอกดปุ่มสุ่ม) ---
 if st.session_state.mode == "start":
-    st.write("มาทดสอบความจำกัน! ระบบจะสุ่มหมวดหมู่อาหารให้คุณจำแคลลอรี่ 10 วินาที")
+    st.write("มาทดสอบความจำกัน! กดปุ่มด้านล่างเพื่อสุ่มหมวดหมู่อาหาร (คุณจะมีเวลาจำ 10 วินาที)")
     
-    if st.button("🎡 กดเพื่อสุ่มหมวดหมู่อาหาร", use_container_width=True):
-        with st.spinner("กำลังหมุนวงล้อ..."):
-            time.sleep(1.5) # จำลองเวลาหมุนวงล้อ
-            
-            # สุ่มหมวดหมู่
-            categories = list(data_source.keys())
-            chosen_category = random.choice(categories)
-            
-            # สุ่มอาหารในหมวดนั้น
-            temp_list = list(data_source[chosen_category])
-            random.shuffle(temp_list)
-            
-            # บันทึกค่า
-            st.session_state.category = chosen_category
-            st.session_state.food_list = temp_list
-            st.session_state.mode = "memorize"
-            st.rerun()
+    # ปุ่มเริ่มเกม
+    if st.button("🎰 กดเพื่อเริ่มสุ่มหมวดหมู่!", use_container_width=True):
+        st.session_state.mode = "spinning"
+        st.rerun()
 
-# --- 4. โหมดจดจำ (10 วินาที) ---
+# --- 4. โหมดแอนิเมชันสุ่ม (เพิ่มเข้ามาใหม่!) ---
+elif st.session_state.mode == "spinning":
+    st.subheader("กำลังสุ่มหมวดหมู่...")
+    
+    # สร้างพื้นที่ว่างสำหรับแสดงแอนิเมชัน
+    spin_placeholder = st.empty()
+    categories = list(data_source.keys())
+    
+    # ลูปเพื่อสร้างเอฟเฟกต์สลับชื่อหมวดหมู่เร็วๆ (เหมือนสล็อตแมชชีน)
+    for _ in range(20):
+        temp_cat = random.choice(categories)
+        spin_placeholder.markdown(f"<h1 style='text-align: center; color: gray;'>🔄 {temp_cat} 🔄</h1>", unsafe_allow_html=True)
+        time.sleep(0.1) # เปลี่ยนข้อความทุกๆ 0.1 วินาที
+    
+    # สุ่มหมวดหมู่ของจริงที่จะได้
+    chosen_category = random.choice(categories)
+    
+    # แสดงผลลัพธ์ที่สุ่มได้ให้เด่นๆ
+    spin_placeholder.markdown(f"<h1 style='text-align: center; color: #ff4b4b;'>🎯 ได้หมวด: {chosen_category} 🎯</h1>", unsafe_allow_html=True)
+    st.balloons() # ปล่อยลูกโป่งฉลองตอนสุ่มได้
+    
+    # ดึงข้อมูลของหมวดนั้นมาสับเปลี่ยนตำแหน่ง
+    temp_list = list(data_source[chosen_category])
+    random.shuffle(temp_list)
+    
+    # บันทึกค่าลงระบบ
+    st.session_state.category = chosen_category
+    st.session_state.food_list = temp_list
+    
+    # หยุดโชว์ผลลัพธ์ 2.5 วินาที ก่อนเด้งไปหน้าจับเวลา
+    time.sleep(2.5)
+    st.session_state.mode = "memorize"
+    st.rerun()
+
+# --- 5. โหมดจดจำ (10 วินาที) ---
 elif st.session_state.mode == "memorize":
     if not st.session_state.food_list:
         st.session_state.mode = "start"
         st.rerun()
         
-    st.success(f"🎉 คุณได้หมวด: **{st.session_state.category}**")
+    st.success(f"📌 หมวดปัจจุบัน: **{st.session_state.category}**")
     st.subheader("⚠️ จำแคลลอรี่ให้ดี! (10 วินาที)")
     
-    # แสดงรูป/Emoji และแคลลอรี่
     cols = st.columns(5)
     for i, item in enumerate(st.session_state.food_list):
         if i < 5: 
             with cols[i]:
-                # ถ้าใช้รูปจริง ให้เปลี่ยนเป็น st.image(item['img'])
                 st.markdown(f"<h1 style='text-align: center;'>{item['img']}</h1>", unsafe_allow_html=True)
                 st.markdown(f"**{item['name']}**")
                 st.error(f"{item['cal']} kcal")
     
-    # แถบจับเวลา
     progress_text = "กำลังนับถอยหลัง..."
     my_bar = st.progress(0, text=progress_text)
     
@@ -100,7 +117,7 @@ elif st.session_state.mode == "memorize":
     st.session_state.mode = "quiz"
     st.rerun()
 
-# --- 5. โหมดแบบทดสอบและตรวจคำตอบ ---
+# --- 6. โหมดแบบทดสอบและรวมคะแนน ---
 elif st.session_state.mode == "quiz":
     st.subheader(f"📝 ทดสอบหมวด: {st.session_state.category}")
     st.write("จงเลือกรายการอาหารเรียงตามลำดับจาก **แคลลอรี่มากที่สุด (1) ไปหา น้อยที่สุด (5)**")
@@ -109,7 +126,6 @@ elif st.session_state.mode == "quiz":
         st.session_state.mode = "start"
         st.rerun()
          
-    # แสดงรูปภาพให้ดูอีกครั้งแบบไม่มีแคลลอรี่
     cols = st.columns(5)
     for i, item in enumerate(st.session_state.food_list):
         if i < 5: 
@@ -117,7 +133,6 @@ elif st.session_state.mode == "quiz":
                 st.markdown(f"<h1 style='text-align: center;'>{item['img']}</h1>", unsafe_allow_html=True)
                 st.markdown(f"**{item['name']}**")
 
-    # ตัวเลือกให้ผู้ใช้ตอบ (ดึงแค่ชื่อมาให้เลือก)
     food_names = [i["name"] for i in st.session_state.food_list]
     user_answer = st.multiselect("คลิกเลือกอาหารตามลำดับที่ถูกต้อง:", food_names)
     
@@ -125,11 +140,9 @@ elif st.session_state.mode == "quiz":
         if len(user_answer) != 5:
             st.warning("⚠️ กรุณาเลือกรายการอาหารให้ครบทั้ง 5 อย่างก่อนส่งคำตอบครับ")
         else:
-            # คำนวณคำตอบที่ถูกต้อง
             correct_items = sorted(st.session_state.food_list, key=lambda x: x['cal'], reverse=True)
             correct_order = [i["name"] for i in correct_items]
             
-            # ตรวจสอบและให้คะแนน
             score = 0
             results_data = []
             
@@ -148,7 +161,6 @@ elif st.session_state.mode == "quiz":
             st.markdown("---")
             st.subheader("📊 ผลคะแนนของคุณ")
             
-            # แสดงคะแนน
             if score == 5:
                 st.success(f"ยอดเยี่ยม! คุณได้คะแนน {score}/5 เต็ม 💯")
                 st.balloons()
@@ -157,12 +169,13 @@ elif st.session_state.mode == "quiz":
             else:
                 st.error(f"ยังต้องฝึกอีกนิดนะ คุณได้คะแนน {score}/5 ✌️")
             
-            # แสดงตารางวิเคราะห์ความผิดพลาด
             st.write("**รายละเอียดการตอบ:**")
             df_results = pd.DataFrame(results_data)
             st.table(df_results)
             
-            if st.button("🔄 เล่นรอบใหม่"):
+            # ปุ่มเล่นรอบใหม่ ที่จะรีเซ็ตค่าทั้งหมดเพื่อสุ่มใหม่จริงๆ
+            if st.button("🔄 เล่นรอบใหม่ (สุ่มใหม่)"):
                 st.session_state.mode = "start"
                 st.session_state.food_list = []
+                st.session_state.category = ""
                 st.rerun()
