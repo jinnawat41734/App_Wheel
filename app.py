@@ -2,8 +2,9 @@ import streamlit as st
 import time
 import random
 import pandas as pd
+from streamlit_sortables import sort_items # นำเข้า Library ลากวาง
 
-st.set_page_config(page_title="Calorie Master", page_icon="🎡", layout="centered")
+st.set_page_config(page_title="Calorie Master Pro", page_icon="🍔", layout="centered")
 
 # --- 1. การตั้งค่า Session State ---
 if "food_list" not in st.session_state:
@@ -47,30 +48,41 @@ data_source = {
     ]
 }
 
-st.title("🎡 เกมสุ่มหมวดวัดความจำแคลลอรี่")
+# --- ตกแต่ง CSS เล็กน้อยให้ดูเป็นแอปมากขึ้น ---
+st.markdown("""
+    <style>
+    .big-font { font-size: 24px !important; font-weight: bold; }
+    .emoji-font { font-size: 50px !important; text-align: center; }
+    </style>
+""", unsafe_allow_html=True)
+
+st.title("🍔 Calorie Master Pro")
 
 # --- 3. โหมดหน้าแรก ---
 if st.session_state.mode == "start":
-    st.write("มาทดสอบความจำกัน! กดปุ่มด้านล่างเพื่อสุ่มหมวดหมู่อาหาร (คุณจะมีเวลาจำ 10 วินาที)")
+    st.markdown('<p class="big-font">มาทดสอบความจำกัน!</p>', unsafe_allow_html=True)
+    st.info("ระบบจะสุ่มหมวดหมู่อาหารให้คุณจำแคลลอรี่ภายในเวลา 10 วินาที จากนั้นคุณต้อง 'ลากและวาง' เพื่อเรียงลำดับให้ถูกต้อง")
     
-    if st.button("🎰 กดเพื่อเริ่มสุ่มหมวดหมู่!", use_container_width=True):
+    st.write("")
+    if st.button("🎰 เริ่มสุ่มหมวดหมู่ (Start Game)", type="primary", use_container_width=True):
         st.session_state.mode = "spinning"
         st.rerun()
 
-# --- 4. โหมดแอนิเมชันสุ่ม ---
+# --- 4. โหมดแอนิเมชันสุ่ม (Slot Machine) ---
 elif st.session_state.mode == "spinning":
-    st.subheader("กำลังสุ่มหมวดหมู่...")
+    st.subheader("🎲 กำลังสุ่มหมวดหมู่...")
     spin_placeholder = st.empty()
     categories = list(data_source.keys())
     
-    for _ in range(15): # สลับ 15 ครั้ง
+    # เอฟเฟกต์หมุนสล็อต
+    for _ in range(15):
         temp_cat = random.choice(categories)
-        spin_placeholder.markdown(f"<h1 style='text-align: center; color: gray;'>🔄 {temp_cat} 🔄</h1>", unsafe_allow_html=True)
+        spin_placeholder.markdown(f"<div class='emoji-font' style='color: gray;'>🔄<br>{temp_cat}</div>", unsafe_allow_html=True)
         time.sleep(0.1) 
     
     chosen_category = random.choice(categories)
-    spin_placeholder.markdown(f"<h1 style='text-align: center; color: #ff4b4b;'>🎯 ได้หมวด: {chosen_category} 🎯</h1>", unsafe_allow_html=True)
-    st.balloons() 
+    spin_placeholder.markdown(f"<div class='emoji-font' style='color: #ff4b4b;'>🎯<br>{chosen_category}</div>", unsafe_allow_html=True)
+    st.balloons()
     
     temp_list = list(data_source[chosen_category])
     random.shuffle(temp_list)
@@ -88,18 +100,18 @@ elif st.session_state.mode == "memorize":
         st.session_state.mode = "start"
         st.rerun()
         
-    st.success(f"📌 หมวดปัจจุบัน: **{st.session_state.category}**")
+    st.success(f"📌 หมวดที่ได้: **{st.session_state.category}**")
     st.subheader("⚠️ จำแคลลอรี่ให้ดี! (10 วินาที)")
     
     cols = st.columns(5)
     for i, item in enumerate(st.session_state.food_list):
         if i < 5: 
             with cols[i]:
-                st.markdown(f"<h1 style='text-align: center;'>{item['img']}</h1>", unsafe_allow_html=True)
-                st.markdown(f"**{item['name']}**")
-                st.error(f"{item['cal']} kcal")
+                st.markdown(f"<div class='emoji-font'>{item['img']}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align: center;'><b>{item['name']}</b></div>", unsafe_allow_html=True)
+                st.error(f"{item['cal']} kcal", icon="🔥")
     
-    progress_text = "กำลังนับถอยหลัง..."
+    progress_text = "⏱️ กำลังนับถอยหลัง..."
     my_bar = st.progress(0, text=progress_text)
     
     for percent_complete in range(100):
@@ -109,35 +121,30 @@ elif st.session_state.mode == "memorize":
     st.session_state.mode = "quiz"
     st.rerun()
 
-# --- 6. โหมดแบบทดสอบ ---
+# --- 6. โหมดแบบทดสอบ (Drag & Drop) ---
 elif st.session_state.mode == "quiz":
-    st.subheader(f"📝 ทดสอบหมวด: {st.session_state.category}")
-    st.write("จงเลือกรายการอาหารเรียงตามลำดับจาก **แคลลอรี่มากที่สุด (1) ไปหา น้อยที่สุด (5)**")
+    st.subheader(f"📝 ทดสอบ: {st.session_state.category}")
+    st.write("👉 **ลากและวาง (Drag & Drop)** รายการด้านล่างเพื่อเรียงลำดับจาก **แคลลอรี่มากที่สุด (บนสุด) ไปหา น้อยที่สุด (ล่างสุด)**")
     
     if not st.session_state.food_list:
         st.session_state.mode = "start"
         st.rerun()
          
-    cols = st.columns(5)
-    for i, item in enumerate(st.session_state.food_list):
-        if i < 5: 
-            with cols[i]:
-                st.markdown(f"<h1 style='text-align: center;'>{item['img']}</h1>", unsafe_allow_html=True)
-                st.markdown(f"**{item['name']}**")
-
-    food_names = [i["name"] for i in st.session_state.food_list]
-    user_answer = st.multiselect("คลิกเลือกอาหารตามลำดับที่ถูกต้อง:", food_names)
+    # สร้างรูปแบบข้อมูลที่จะให้แสดงตอนลากวาง (เอาภาพและชื่อมารวมกัน)
+    sortable_items = [f"{i['img']} {i['name']}" for i in st.session_state.food_list]
     
-    if st.button("ส่งคำตอบ", type="primary"):
-        if len(user_answer) != 5:
-            st.warning("⚠️ กรุณาเลือกรายการอาหารให้ครบทั้ง 5 อย่างก่อนส่งคำตอบครับ")
-        else:
-            # เก็บคำตอบลง Session แล้วเปลี่ยนหน้าไปโหมดเฉลย (Result) ทันที
-            st.session_state.user_answer = user_answer
-            st.session_state.mode = "result"
-            st.rerun()
+    # *** ฟังก์ชันพระเอกของเรา: ระบบลากวาง ***
+    user_sorted = sort_items(sortable_items)
+    
+    st.write("")
+    if st.button("ส่งคำตอบ (Submit)", type="primary"):
+        # ตัดเอาแค่ชื่ออาหารออกมาตรวจ (ลบ Emoji ออก)
+        # รูปแบบคือ "🍔 ชื่ออาหาร" เราจึงแยกด้วยช่องว่างตัวแรก
+        st.session_state.user_answer = [item.split(" ", 1)[1] for item in user_sorted]
+        st.session_state.mode = "result"
+        st.rerun()
 
-# --- 7. โหมดเฉลยและปุ่มเริ่มใหม่ (แยกออกมาเป็น State ใหม่) ---
+# --- 7. โหมดเฉลย ---
 elif st.session_state.mode == "result":
     correct_items = sorted(st.session_state.food_list, key=lambda x: x['cal'], reverse=True)
     correct_order = [i["name"] for i in correct_items]
@@ -154,27 +161,28 @@ elif st.session_state.mode == "result":
         results_data.append({
             "อันดับที่": i + 1,
             "คำตอบของคุณ": user_answer[i],
-            "คำตอบที่ถูกต้อง": f"{correct_order[i]} ({correct_items[i]['cal']} kcal)",
-            "ผลลัพธ์": "✅ ถูก" if is_correct else "❌ ผิด"
+            "คำตอบที่ถูกต้อง": f"{correct_order[i]}",
+            "แคลลอรี่": f"{correct_items[i]['cal']} kcal",
+            "ผลตรวจ": "✅" if is_correct else "❌"
         })
     
     st.markdown("---")
-    st.subheader("📊 ผลคะแนนของคุณ")
+    st.markdown(f'<p class="big-font">📊 ผลคะแนนของคุณ: {score}/5</p>', unsafe_allow_html=True)
     
     if score == 5:
-        st.success(f"ยอดเยี่ยม! คุณได้คะแนน {score}/5 เต็ม 💯")
+        st.success("อัจฉริยะ! ความจำคุณระดับเทพ 💯")
         st.balloons()
     elif score >= 3:
-        st.info(f"ทำได้ดี! คุณได้คะแนน {score}/5 👍")
+        st.info("ทำได้ดีมาก! พลาดไปแค่นิดเดียว 👍")
     else:
-        st.error(f"ยังต้องฝึกอีกนิดนะ คุณได้คะแนน {score}/5 ✌️")
+        st.error("ไม่เป็นไร ลองฝึกความจำใหม่อีกรอบนะ ✌️")
     
-    st.write("**รายละเอียดการตอบ:**")
+    st.write("**วิเคราะห์ข้อผิดพลาด:**")
     df_results = pd.DataFrame(results_data)
     st.table(df_results)
     
-    # ปุ่มนี้ทำงานได้ 100% แล้ว เพราะไม่ได้อยู่ซ้อนกับปุ่มไหน
-    if st.button("🔄 เล่นรอบใหม่ (สุ่มใหม่)", use_container_width=True):
+    st.write("")
+    if st.button("🔄 เล่นรอบใหม่ (Play Again)", use_container_width=True):
         st.session_state.mode = "start"
         st.session_state.food_list = []
         st.session_state.category = ""
